@@ -206,6 +206,83 @@ def save_script(script: Script, output_path: Path) -> None:
     content = "\n".join(lines)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding="utf-8")
+
+
+def save_tts_script(script: Script, output_path: Path) -> None:
+    """
+    Save TTS-ready script without metadata - just the content for direct TTS use.
     
-    console.print(f"[green]✓ Script saved: {output_path}[/green]")
-    console.print(f"  {script.estimated_words} words, ~{script.estimated_minutes:.1f} minutes")
+    Args:
+        script: Script object with content
+        output_path: Path where TTS script should be saved (with timestamp)
+    """
+    # Clean up the script content for natural TTS reading
+    tts_content = _format_for_tts(script.content)
+    
+    # Save to file
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(tts_content, encoding="utf-8")
+
+
+def _format_for_tts(content: str) -> str:
+    """
+    Format script content for natural TTS reading.
+    
+    Args:
+        content: Raw script content
+        
+    Returns:
+        TTS-optimized content
+    """
+    # Remove markdown formatting that might confuse TTS
+    tts_content = content
+    
+    # Remove any remaining metadata or markdown headers
+    tts_content = re.sub(r'^#.*$', '', tts_content, flags=re.MULTILINE)
+    tts_content = re.sub(r'^\*.*\*$', '', tts_content, flags=re.MULTILINE)
+    
+    # Clean up excessive whitespace but preserve paragraph breaks
+    tts_content = re.sub(r'\n{3,}', '\n\n', tts_content)
+    tts_content = re.sub(r'[ \t]+', ' ', tts_content)
+    
+    # Add natural pauses for better TTS reading
+    # Add longer pause after sentences ending with period
+    tts_content = re.sub(r'\.(\s+)([A-Z])', r'.\n\n\2', tts_content)
+    
+    # Add pause after introductory phrases for natural flow
+    intro_phrases = [
+        r'Welcome to[^.]*\.',
+        r'Today[^.]*\.',
+        r'Let\'s dive in\.',
+        r'Moving on[^.]*\.',
+        r'Next[^.]*\.',
+        r'Finally[^.]*\.',
+        r'In conclusion[^.]*\.',
+        r'That wraps up[^.]*\.'
+    ]
+    
+    for phrase in intro_phrases:
+        tts_content = re.sub(f'({phrase})', r'\1\n\n', tts_content, flags=re.IGNORECASE)
+    
+    # Clean up any resulting multiple newlines
+    tts_content = re.sub(r'\n{3,}', '\n\n', tts_content)
+    
+    # Ensure it starts and ends cleanly
+    tts_content = tts_content.strip()
+    
+    return tts_content
+
+
+def create_tts_filename(run_date: str) -> str:
+    """
+    Create timestamped filename for TTS script.
+    
+    Args:
+        run_date: Run date string
+        
+    Returns:
+        Filename with timestamp
+    """
+    # Create timestamp in format DD-HH-MM
+    timestamp = pendulum.now().format('DD-HH-mm')
+    return f"script_tts_{timestamp}.txt"

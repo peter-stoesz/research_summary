@@ -27,6 +27,7 @@ from ..generation import (
     save_script,
     save_show_notes,
 )
+from ..generation.script import save_tts_script, create_tts_filename
 from ..ingestion import ArticleFetcher, RSSFetcher
 from ..ranking import ArticleRanker
 
@@ -184,6 +185,7 @@ class PipelineOrchestrator:
                 f"Generated files:\n"
                 f"• show_notes.md\n"
                 f"• script.txt\n"
+                f"• script_tts_{{timestamp}}.txt\n"
                 f"• pipeline_stats.json",
                 style="green"
             ))
@@ -451,9 +453,14 @@ class PipelineOrchestrator:
                     show_notes, target_minutes, run_date
                 )
                 
-                # Save script
+                # Save regular script
                 script_path = run_dir / "script.txt"
                 save_script(script, script_path)
+                
+                # Save TTS-ready script with timestamp
+                tts_filename = create_tts_filename(run_date)
+                tts_script_path = run_dir / tts_filename
+                save_tts_script(script, tts_script_path)
                 
                 stage.complete({
                     "estimated_minutes": script.estimated_minutes,
